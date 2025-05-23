@@ -1,0 +1,54 @@
+# config.toml
+
+title = "Chunked Rclone Copy Configuration"
+
+[rclone_paths]
+# Your rclone remote name (e.g., "gaom" as you've used)
+remote_name = "gaom"  
+
+# Path on the remote to the source folder you want to copy
+# Example: "My Drive/2025_Personal"
+source_path = "My Drive/2025_Personal" 
+
+# Parent path on the remote where the backup folder will be created/updated
+# Example: "My Drive" (backup folder will be created inside this)
+# Example: "My Drive/Backups" (backup folder will be My Drive/Backups/your_backup_folder_name)
+destination_parent_path = "My Drive" 
+
+# Name of the backup folder. rclone will copy source_path *into* this folder.
+# Example: "20250523_Personal_bak_chunked"
+# The final destination for rclone will be remote_name:destination_parent_path/backup_folder_name
+backup_folder_name = "20250523_Personal_bak_py" 
+
+[rclone_options]
+# Add rclone global flags and copy command flags here as a list of strings.
+# Each flag or value should be a separate string in the list.
+# Example: flags = ["-vv", "--tpslimit", "5", "--retries", "5"]
+flags = [
+    "-vv",                     # Very verbose logging from rclone (shows individual files, debug info)
+    "--tpslimit", "8",         # Limit API transactions per second (e.g., 8)
+    "--tpslimit-burst", "10",  # Allow short bursts up to 10 TPS
+    "--retries", "5",          # Retry failed operations 5 times
+    "--checkers", "4",         # Number of parallel file checkers
+    "--transfers", "2",        # Number of parallel file transfers (for server-side, this is operations)
+    # "--drive-server-side-across-configs", # Usually default for same remote copy, but can be explicit
+    "--stats-one-line",        # More compact progress stats
+    "--stats", "30s"           # Print stats every 30 seconds
+]
+
+[chunking]
+# Duration for each rclone chunk in seconds.
+# Example: 3600 for 1 hour, 1800 for 30 minutes.
+run_duration_seconds = 3600  
+
+[logging]
+# Local directory (relative to this script) to store rclone log files for each chunk.
+log_dir = "rclone_chunk_logs_py" 
+# Base name for individual chunk log files (timestamp will be added).
+log_file_basename = "rclone_copy_chunk"
+
+# Optional: Upload chunk logs to Google Drive
+upload_logs_to_remote = true
+# Path on the rclone remote to store log files (will be created if it doesn't exist)
+# Example: "My Drive/ProjectLogs/RcloneChunkCopy"
+remote_log_upload_path = "My Drive/20250523_Personal/RcloneChunkLogs"
