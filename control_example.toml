@@ -1,0 +1,41 @@
+# control_example.toml
+#
+# This is an example of a run-specific control file for chunk_rclone.py.
+# Copy this to a new file (e.g., control_myjob.toml) and customize it.
+# Then run: python3 chunk_rclone.py control_myjob.toml
+#
+# Settings here override or supplement those in the main 'config.toml'.
+
+run_description = "Example Backup Job (Chunked)"
+
+# [rclone_paths] - MANDATORY section for defining a job in a control file.
+# This section provides all necessary path components for an rclone operation.
+[rclone_paths]
+remote_name               = "your_rclone_remote_name_here" # e.g., "gaom"
+source_path               = "path/on/remote/to/source_folder" # e.g., "My Drive/PhotosToBackup"
+destination_parent_path   = "path/on/remote/to/backup_parent" # e.g., "My Drive/Backups". Can be "" for remote root.
+backup_folder_name        = "MyBackupSubfolderName" # e.g., "PhotosBackup_2025"
+                                                # Final rclone destination: remote:dest_parent/backup_name
+
+# [chunking] - Optional section to override defaults from config.toml
+# [chunking]
+# run_duration_seconds = 1800  # Example: 30 minutes for this job's chunks
+
+# [logging] - Optional section to override defaults from config.toml
+# [logging]
+# log_dir = "rclone_logs/example_job"       # Specific local log subdirectory for this job
+# log_file_basename = "example_job_chunk"   # Specific log file prefix for this job
+# upload_logs_to_remote = true
+# remote_log_upload_path = "My Drive/RcloneLogs/ExampleJob" # MANDATORY if upload_logs_to_remote is true
+
+# [rclone_options] - Optional section to override rclone flags from config.toml
+# If this section (or specifically 'flags' within it) is present,
+# it REPLACES the 'flags' list from config.toml for this run.
+# [rclone_options]
+# flags = [
+#     "-vv", # Use very verbose for this job
+#     "--tpslimit", "5", 
+#     "--retries", "10",
+#     "--immutable",     # Example of adding/changing flags
+#     "--stats", "15s",
+#     "--stats-one-

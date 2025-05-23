@@ -1,5 +1,12 @@
 # .gitignore
 
+# Control files for specific runs (if they contain sensitive paths or are numerous)
+control_2025*.toml
+
+# Keep control_example.toml (if you create one) by NOT matching this pattern,
+# or by explicitly un-ignoring it:
+# !control_example.toml
+
 # Python
 # ------
 # Byte-compiled / optimized / DLL files
