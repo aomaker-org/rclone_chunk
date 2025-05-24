@@ -1,6 +1,6 @@
 # rclone_chunk
 # 20250523 fekerr & gemini (attribution pending?)
-# gemini and copilot both have issues outputting "nested markdown". :)
+# ***NOTE***: gemini and copilot both have issues outputting "nested markdown". :)
 
 ```markdown
 # Chunked Rclone Runner (`chunk_rclone.py`)
