@@ -1,39 +1,96 @@
-#!/bin/bash
-# setenv.sh for the dir1parse project
-# Purpose: Sets up the environment for developing and running dir1parse.
-# To be sourced, not executed: source./setenv.sh (if in fek_wip) or source fek_wip/setenv.sh (if in project root)
-# Created: 2025-05-19
+#
+# setenv.sh - Generic Environment Setup Script
+#
+# Purpose:
+#   Sets up common environment variables and aliases for the current project.
+#   This script MUST BE SOURCED, not executed directly.
+#
+# How to Use:
+#   1. Copy this file into your project (e.g., into a 'utils/' or 'scripts/' subdirectory).
+#   2. Customize the '--- Customizable Project Variables ---' section below.
+#   3. Source the script from your shell:
+#      e.g., if in project root and script is in 'utils/': source utils/setenv.sh
+#      e.g., from anywhere: source /path/to/your_project/utils/setenv.sh
+#
 
-# Determine the absolute path to the directory containing this script (fek_wip),
-# then go up one level to get the project root.
-# This makes the script sourceable robustly.
-_SETENV_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
-export DIR1PARSE_PROJECT_ROOT="$(cd "${_SETENV_SCRIPT_DIR}/.." && pwd)"
+# --- Guard against direct execution ---
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "ERROR: This script (setenv.sh) is designed to be sourced, not executed."
+    echo "Please use: source \"${BASH_SOURCE[0]}\""
+    exit 1
+fi
 
-export DIR1PARSE_ONEDRIVE_INFO="/mnt/g/My Drive/dir1parse"
+# --- Customizable Project Variables ---
+# !!! EDIT THESE FOR EACH NEW PROJECT !!!
+PROJECT_NAME_LOWER="myproject"
+PROJECT_NAME_UPPER="MYPROJECT"
+MAIN_SCRIPT_NAME="main_script.py"
+MAIN_SCRIPT_SUBPATH="" # e.g., "bin/" if main script is in project_root/bin/
+# --- End Customizable Project Variables ---
 
-# Add the project root directory to PATH so the 'dir1parse' executable in the root can be called directly.
-# Note: If 'dir1parse' script is not directly in DIR1PARSE_PROJECT_ROOT, adjust this or the alias.
-# Based on your ls output, 'dir1parse' is in the project root.
-export PATH="${DIR1PARSE_PROJECT_ROOT}:${PATH}"
 
-# Alias to run the main dir1parse script
-# This ensures you run the script from your project root.
-alias dir1parse="${DIR1PARSE_PROJECT_ROOT}/dir1parse"
-alias catclip="${DIR1PARSE_PROJECT_ROOT}/fek_wip/catclip"
+# --- Dynamic Path Setup ---
+_THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Assume project root is one level above the directory containing this script (e.g., utils/)
+PROJECT_ROOT_CANDIDATE="$(cd "${_THIS_SCRIPT_DIR}/.." && pwd)"
+export "${PROJECT_NAME_UPPER}_PROJECT_ROOT"="${PROJECT_ROOT_CANDIDATE}"
 
-# Example of other useful aliases (uncomment and modify as needed):
-# alias dpconfig="code ${DIR1PARSE_PROJECT_ROOT}/config.toml"
-# alias dplogs="tail -f ${DIR1PARSE_PROJECT_ROOT}/rclone_extracted_logs.jsonl" # Assuming default log output from your script
-# alias dproot="cd ${DIR1PARSE_PROJECT_ROOT}"
+PROJECT_ROOT_VAR_NAME="${PROJECT_NAME_UPPER}_PROJECT_ROOT"
+PROJECT_ROOT_PATH="${!PROJECT_ROOT_VAR_NAME}"
 
-echo "dir1parse environment set:"
-echo "  DIR1PARSE_PROJECT_ROOT=${DIR1PARSE_PROJECT_ROOT}"
-echo "  PATH extended with: ${DIR1PARSE_PROJECT_ROOT}"
-echo "  Alias 'dir1parse' created for: ${DIR1PARSE_PROJECT_ROOT}/dir1parse"
+# --- PATH Modification ---
+MAIN_SCRIPT_EFFECTIVE_DIR="${PROJECT_ROOT_PATH}"
+if [ -n "${MAIN_SCRIPT_SUBPATH}" ]; then
+    CLEANED_SUBPATH="${MAIN_SCRIPT_SUBPATH%/}"
+    MAIN_SCRIPT_EFFECTIVE_DIR="${PROJECT_ROOT_PATH}/${CLEANED_SUBPATH}"
+fi
+
+if [ -d "${MAIN_SCRIPT_EFFECTIVE_DIR}" ]; then
+    if [[ ":${PATH}:" != *":${MAIN_SCRIPT_EFFECTIVE_DIR}:"* ]]; then
+        export PATH="${MAIN_SCRIPT_EFFECTIVE_DIR}:${PATH}"
+        echo "INFO: PATH extended with script directory: ${MAIN_SCRIPT_EFFECTIVE_DIR}"
+    else
+        echo "INFO: Script directory '${MAIN_SCRIPT_EFFECTIVE_DIR}' already in PATH."
+    fi
+elif [ -n "${MAIN_SCRIPT_SUBPATH}" ]; then # Only warn if a subpath was specified but not found
+    echo "WARNING: Specified MAIN_SCRIPT_SUBPATH directory '${MAIN_SCRIPT_EFFECTIVE_DIR}' does not exist. Not added to PATH."
+fi
+
+# Add the directory containing this setenv.sh script (e.g., 'utils') to PATH
+if [ "${_THIS_SCRIPT_DIR}" != "${MAIN_SCRIPT_EFFECTIVE_DIR}" ]; then # Avoid adding if it's the same as above
+    if [ -d "${_THIS_SCRIPT_DIR}" ] && [[ ":${PATH}:" != *":${_THIS_SCRIPT_DIR}:"* ]]; then
+        export PATH="${_THIS_SCRIPT_DIR}:${PATH}"
+        echo "INFO: PATH extended with utils/tools directory: ${_THIS_SCRIPT_DIR}"
+    elif [ -d "${_THIS_SCRIPT_DIR}" ] && [[ ":${PATH}:" == *":${_THIS_SCRIPT_DIR}:"* ]]; then
+        echo "INFO: Utils/tools directory '${_THIS_SCRIPT_DIR}' already in PATH."
+    fi
+fi
+
+
+# --- Aliases ---
+FULL_MAIN_SCRIPT_PATH="${PROJECT_ROOT_PATH}/${MAIN_SCRIPT_SUBPATH}${MAIN_SCRIPT_NAME}"
+if [ -f "${FULL_MAIN_SCRIPT_PATH}" ]; then
+    INTERPRETER=""
+    if [[ "${MAIN_SCRIPT_NAME}" == *.py ]]; then
+        INTERPRETER="python3 "
+    elif [[ "${MAIN_SCRIPT_NAME}" == *.sh ]]; then
+        INTERPRETER="bash "
+    fi
+    alias "${PROJECT_NAME_LOWER}"="${INTERPRETER}\"${FULL_MAIN_SCRIPT_PATH}\""
+    echo "INFO: Alias '${PROJECT_NAME_LOWER}' created for: ${INTERPRETER}${FULL_MAIN_SCRIPT_PATH}"
+else
+    echo "WARNING: Main script '${MAIN_SCRIPT_NAME}' not found at '${FULL_MAIN_SCRIPT_PATH}'. Main project alias not created."
+fi
+
+alias "cd${PROJECT_NAME_LOWER}"="cd \"${PROJECT_ROOT_PATH}\""
+echo "INFO: Alias 'cd${PROJECT_NAME_LOWER}' created to navigate to project root."
+
+# --- Feedback to User ---
 echo ""
-echo "  DIR1PARSE_ONEDRIVE_INFO=${DIR1PARSE_ONEDRIVE_INFO}"
+echo "${PROJECT_NAME_UPPER} project environment set:"
+echo "  Project Root (${PROJECT_ROOT_VAR_NAME}): ${PROJECT_ROOT_PATH}"
 echo ""
+echo "To use the main script, you might run: '${PROJECT_NAME_LOWER}' <arguments_if_any>"
+echo "Remember to activate your Python virtual environment if your project uses one for dependencies."
 
-echo "To use, run commands like: dir1parse --config config.toml"
-echo "Remember to activate your Python virtual environment if you use one for this project."
+# end of setenv.sh (generic template)
