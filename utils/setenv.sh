@@ -22,9 +22,9 @@ fi
 
 # --- Customizable Project Variables ---
 # !!! EDIT THESE FOR EACH NEW PROJECT !!!
-PROJECT_NAME_LOWER="myproject"
-PROJECT_NAME_UPPER="MYPROJECT"
-MAIN_SCRIPT_NAME="main_script.py"
+PROJECT_NAME_LOWER="chunk_rclone"
+PROJECT_NAME_UPPER="CHUNK_RCLONE"
+MAIN_SCRIPT_NAME="chunk_rclone.py"
 MAIN_SCRIPT_SUBPATH="" # e.g., "bin/" if main script is in project_root/bin/
 # --- End Customizable Project Variables ---
 
