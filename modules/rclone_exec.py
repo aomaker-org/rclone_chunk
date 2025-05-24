@@ -48,18 +48,19 @@ def run_rclone_chunk(effective_cfg: dict) -> int:
         log_dir_str = effective_cfg['log_dir'] 
         log_file_basename = effective_cfg['log_file_basename'] 
         rclone_flags_list = effective_cfg.get('rclone_flags', []) 
-        is_dry_run = effective_cfg.get('is_dry_run', False) # Get dry_run status
+        is_dry_run = effective_cfg.get('is_dry_run', False)
     except KeyError as e:
         print(f"ERROR: rclone_exec: Missing a critical configuration key in effective_cfg: {e}", file=sys.stderr)
-        print("       Ensure all required path, chunking, and logging keys are defined in your TOML files.", file=sys.stderr)
         return 1 
 
     # Construct full rclone paths
     full_source_rclone_path = f"{remote_name}:{source_rclone_path_on_remote}"
+    # Pathlib handles joining correctly, even if dest_parent_rclone_path_on_remote is empty ("")
     dest_path_part = Path(dest_parent_rclone_path_on_remote) / backup_folder_name
     full_destination_rclone_path = f"{remote_name}:{str(dest_path_part)}"
 
     # Prepare local log directory and file
+    # Assume log_dir_str is relative to CWD (where chunk_rclone.py is run) or absolute
     log_dir = Path(log_dir_str)
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
@@ -88,7 +89,7 @@ def run_rclone_chunk(effective_cfg: dict) -> int:
 
     # Print pre-execution info
     print("=" * 70)
-    run_description = effective_cfg.get('run_description', 'N/A')
+    run_description = effective_cfg.get('run_description', 'N/A') # Get run_description
     print(f"Starting Rclone Copy Chunk: {run_description} at {timestamp}")
     if is_dry_run:
         print("  Mode:        *** DRY RUN *** (Rclone will simulate transfers)")
@@ -142,13 +143,13 @@ def run_rclone_chunk(effective_cfg: dict) -> int:
         print(f"         Refer to rclone documentation for exit code meanings (e.g., https://rclone.org/docs/#exit-code).")
         print(f"         Also check the detailed rclone log: {log_file_path.resolve()}")
     
-    current_run_log_path_str = str(log_file_path.resolve()) # For clarity in messages
+    current_run_log_path_str = str(log_file_path.resolve())
     print(f"INFO: Log file for this run: {current_run_log_path_str}")
 
     # Upload log file if configured
     if effective_cfg.get('upload_logs_to_remote', False):
         remote_log_upload_path_str = effective_cfg.get('remote_log_upload_path')
-        current_remote_name_for_log_upload = effective_cfg.get('remote_name')
+        current_remote_name_for_log_upload = effective_cfg.get('remote_name') # Use the job's remote_name
    
         if remote_log_upload_path_str and current_remote_name_for_log_upload:
             full_remote_log_dest = f"{current_remote_name_for_log_upload}:{str(Path(remote_log_upload_path_str) / log_file_path.name)}"
@@ -167,7 +168,7 @@ def run_rclone_chunk(effective_cfg: dict) -> int:
                     print("INFO: Log file uploaded successfully.")
                 else:
                     print(f"WARNING: Failed to upload log file '{log_file_path.name}'. Rclone exit code: {upload_process.returncode}", file=sys.stderr)
-                    if upload_process.stdout: 
+                    if upload_process.stdout and upload_process.returncode !=0 : # Show stdout only on error for brevity
                         print(f"Rclone stdout (log upload):\n{upload_process.stdout.strip()}", file=sys.stderr)
                     if upload_process.stderr: 
                         print(f"Rclone stderr (log upload):\n{upload_process.stderr.strip()}", file=sys.stderr)
@@ -178,14 +179,15 @@ def run_rclone_chunk(effective_cfg: dict) -> int:
             except Exception as e_upload_generic:
                  print(f"WARNING: An error occurred during log upload: {e_upload_generic}", file=sys.stderr)
         elif effective_cfg.get('upload_logs_to_remote'): 
+            # This case means upload_logs_to_remote was true, but path or remote was missing
             print("WARNING: 'upload_logs_to_remote' is true but 'remote_log_upload_path' "
                   "and/or 'remote_name' is not specified sufficiently in config; cannot upload log.", file=sys.stderr)
                
     print("=" * 70)
     
-    if exit_code in [0, 124, 130]:
+    if exit_code in [0, 124, 130]: # Normal terminations for a chunk
         return 0 
-    return exit_code 
+    return exit_code # Propagate rclone's error code or script's own critical error code (1)
 
 if __name__ == '__main__':
     # This section is for testing the module directly, which is less common once integrated.
@@ -193,23 +195,4 @@ if __name__ == '__main__':
     print("INFO: rclone_exec.py module - direct execution for basic check.")
     print("      This module is intended to be called by chunk_rclone.py with a full config.")
     print("      To test thoroughly, run the main chunk_rclone.py script with proper TOML configurations.")
-    
-    # Example of how it might be called with a dummy config if you wanted to test standalone:
-    # test_dummy_config = {
-    #     'remote_name': 'mytestremote', 
-    #     'source_rclone_path_on_remote': 'source_dir_test',
-    #     'dest_parent_rclone_path_on_remote': 'backup_test_area',
-    #     'backup_folder_name': 'MyTestBackup_RcloneExec',
-    #     'run_duration_seconds': 15, 
-    #     'log_dir': 'rclone_exec_standalone_test_logs',
-    #     'log_file_basename': 'standalone_test_chunk',
-    #     'rclone_flags': ['-v', '--stats', '5s', '--dry-run'], 
-    #     'is_dry_run': True, # Manually set for this dummy test
-    #     'run_description': 'Direct Standalone Test of rclone_exec.py',
-    #     'upload_logs_to_remote': False 
-    # }
-    # print(f"\nINFO: Simulating a call with a dummy config: {test_dummy_config.get('run_description')}")
-    # test_status = run_rclone_chunk(test_dummy_config)
-    # print(f"INFO: rclone_exec.py dummy test call finished with status: {test_status}")
-
 # end of modules/rclone_exec.py

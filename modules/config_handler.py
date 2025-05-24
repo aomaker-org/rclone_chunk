@@ -9,7 +9,7 @@ Handles loading and merging of TOML configuration files for the chunk_rclone uti
   final effective configuration.
 """
 
-import tomllib # Using built-in tomllib for Python 3.11+ (you are on 3.12.3)
+import tomllib # Using built-in tomllib for Python 3.11+
 import sys
 from pathlib import Path
 
@@ -61,13 +61,11 @@ def load_effective_config(control_file_arg: str = None) -> dict:
     # 2. Determine which control file to load
     control_file_to_load_path_obj = None 
     if control_file_arg:
-        control_file_to_load_path_obj = Path(control_file_arg) # Can be relative or absolute from CLI
+        control_file_to_load_path_obj = Path(control_file_arg) 
         if not control_file_to_load_path_obj.is_file():
-            # Try resolving relative to CWD if not absolute and not found
             if not control_file_to_load_path_obj.is_absolute():
                 control_file_to_load_path_obj = current_working_dir / control_file_arg
-            
-            if not control_file_to_load_path_obj.is_file(): # Check again
+            if not control_file_to_load_path_obj.is_file(): 
                 print(f"ERROR: Specified control file '{control_file_arg}' not found.", file=sys.stderr)
                 sys.exit(1)
         print(f"INFO: Custom control file specified: '{control_file_to_load_path_obj.resolve()}'")
@@ -87,7 +85,7 @@ def load_effective_config(control_file_arg: str = None) -> dict:
                 control_cfg_data = tomllib.load(f)
             print(f"INFO: Loaded control settings from '{control_file_to_load_path_obj.resolve()}'")
 
-            # Merge/Override logic:
+            # Merge/Override logic: Iterate through top-level keys from control file.
             for key, control_value in control_cfg_data.items():
                 if isinstance(control_value, dict) and isinstance(effective_config.get(key), dict):
                     # If both base and control have this section as a dictionary, merge them.
@@ -100,23 +98,22 @@ def load_effective_config(control_file_arg: str = None) -> dict:
 
         except tomllib.TOMLDecodeError as e:
             print(f"ERROR: Could not parse control file '{control_file_to_load_path_obj}': {e}", file=sys.stderr)
-            sys.exit(1)
+            sys.exit(1) 
         except Exception as e:
             print(f"ERROR: An unexpected error occurred loading/merging control file '{control_file_to_load_path_obj}': {e}", file=sys.stderr)
             sys.exit(1)
 
     # --- Extract and Validate final effective settings for the rclone job ---
-    # This ensures critical parameters are present after merging.
     final_settings = {}
     final_settings['run_description'] = effective_config.get('run_description', "Chunked Rclone Run")
 
-    # [rclone_paths] validation
     rclone_paths_cfg = effective_config.get('rclone_paths', {})
     final_settings['remote_name'] = rclone_paths_cfg.get('remote_name')
     final_settings['source_rclone_path_on_remote'] = rclone_paths_cfg.get('source_path')
     final_settings['dest_parent_rclone_path_on_remote'] = rclone_paths_cfg.get('destination_parent_path')
     final_settings['backup_folder_name'] = rclone_paths_cfg.get('backup_folder_name')
 
+    # Validate essential paths after merging
     if not final_settings.get('remote_name'):
         print("ERROR: 'rclone_paths.remote_name' must be defined in the effective configuration.", file=sys.stderr)
         sys.exit(1)
@@ -130,11 +127,9 @@ def load_effective_config(control_file_arg: str = None) -> dict:
         print("       These must be fully resolved after merging 'config.toml' and any control file.", file=sys.stderr)
         sys.exit(1)
 
-    # [rclone_options] validation
     rclone_options_cfg = effective_config.get('rclone_options', {})
-    final_settings['rclone_flags'] = rclone_options_cfg.get('flags', []) # Defaults to empty list if not found
+    final_settings['rclone_flags'] = rclone_options_cfg.get('flags', [])
 
-    # [chunking] validation
     chunking_cfg = effective_config.get('chunking', {})
     final_settings['run_duration_seconds'] = chunking_cfg.get('run_duration_seconds')
     if not isinstance(final_settings.get('run_duration_seconds'), int) or final_settings['run_duration_seconds'] <= 0:
@@ -142,7 +137,6 @@ def load_effective_config(control_file_arg: str = None) -> dict:
               "Must be a positive integer defined in the effective config's [chunking] section.", file=sys.stderr)
         sys.exit(1)
 
-    # [logging] settings (all optional with defaults)
     logging_cfg = effective_config.get('logging', {})
     final_settings['log_dir'] = logging_cfg.get('log_dir', 'rclone_chunk_logs_py')
     final_settings['log_file_basename'] = logging_cfg.get('log_file_basename', 'rclone_copy_chunk')
@@ -153,70 +147,59 @@ def load_effective_config(control_file_arg: str = None) -> dict:
     return final_settings
 
 if __name__ == '__main__':
-    # This is a module, so direct execution could be for testing.
-    print("INFO: Testing config_handler.py module...")
-    print("INFO: Attempting to load 'config.toml' and 'control.toml' (if present).")
+    # Basic test harness for direct execution of this module
+    print("INFO: Testing modules/config_handler.py module...")
+    print("INFO: This test will attempt to load 'config.toml' and 'control.toml' (if present).")
+    print("      Create dummy versions of these files in the script's root for a full test.")
     
-    # Create dummy config files for testing if they don't exist
-    test_config_path = Path("config.toml")
-    test_control_path = Path("control.toml")
-    created_test_config = False
-    created_test_control = False
+    # For this test to run without erroring out immediately, ensure a minimal
+    # config.toml exists or provide more robust dummy file creation.
+    # The current dummy creation logic below is illustrative.
+    
+    test_config_path = Path.cwd() / BASE_CONFIG_FILENAME
+    test_control_path = Path.cwd() / DEFAULT_CONTROL_FILENAME
+    created_dummy_config = False
+    created_dummy_control = False
 
     if not test_config_path.exists():
-        print(f"INFO: Creating dummy '{test_config_path}' for testing...")
-        with open(test_config_path, 'w') as f:
+        print(f"INFO: Creating dummy '{test_config_path.name}' for testing...")
+        with open(test_config_path, 'w', encoding='utf-8') as f: # tomllib loads binary, but basic toml can be written as text
             f.write('title = "Test Base Config"\n')
             f.write('[rclone_paths]\nremote_name = "testremote"\n')
-            f.write('source_path = "test_source"\ndestination_parent_path = "test_dest_parent"\n')
+            f.write('source_path = "test_source"\ndestination_parent_path = ""\n') # Assuming root
             f.write('backup_folder_name = "test_backup_name"\n')
-            f.write('[chunking]\nrun_duration_seconds = 60\n')
-        created_test_config = True
+            f.write('[chunking]\nrun_duration_seconds = 10\n')
+        created_dummy_config = True
         
     if not test_control_path.exists():
-        print(f"INFO: Creating dummy '{test_control_path}' for testing (will override source_path)...")
-        with open(test_control_path, 'w') as f:
-            f.write('run_description = "Test Run via Control"\n')
-            f.write('[rclone_paths]\nsource_path = "override_source_from_control"\n') # Override one path
-            f.write('[chunking]\nrun_duration_seconds = 30\n') # Override duration
-        created_test_control = True
+        # Only create dummy control if no CLI arg would be passed in a real test
+        pass # Let load_effective_config handle its absence or presence
 
-    # Test case 1: Load with default control.toml (if it exists or was created)
-    print("\n--- Test Case 1: Loading with default control.toml (if present) ---")
-    cfg1 = load_effective_config()
-    # print("\nEffective Config 1:")
-    # for k, v in cfg1.items():
-    #     print(f"  {k}: {v}")
-
-    # Test case 2: Specify a non-existent control file (should error and exit ideally)
-    # print("\n--- Test Case 2: Specifying a non-existent control file ---")
-    # try:
-    #    load_effective_config("non_existent_control.toml")
-    # except SystemExit as e:
-    #    print(f"Caught SystemExit as expected: {e.code}")
-
-    # Test case 3: No control file specified, and no default control.toml
-    # Requires deleting control.toml first for this specific test.
-    if test_control_path.exists() and created_test_control: # Only delete if we created it for test
-        print(f"\n--- Test Case 3: Temporarily removing '{test_control_path}' to test base config only ---")
-        test_control_path.unlink()
-        cfg3 = load_effective_config()
-        # print("\nEffective Config 3 (base only):")
-        # for k, v in cfg3.items():
-        #    print(f"  {k}: {v}")
-        # Recreate for other potential tests or if user had one
-        if created_test_control: # Recreate if it was a dummy
-             with open(test_control_path, 'w') as f:
-                f.write('run_description = "Test Run via Control (recreated)"\n')
-                f.write('[rclone_paths]\nsource_path = "override_source_from_control_recreated"\n')
+    print("\n--- Test Case: Loading with default control.toml (if it exists) or base config only ---")
+    try:
+        cfg_test = load_effective_config() # Test with no CLI argument
+        print("\nEffective Config from test:")
+        for k_test, v_test in cfg_test.items():
+            if isinstance(v_test, dict):
+                print(f"  {k_test}:")
+                for sub_k, sub_v in v_test.items():
+                    print(f"    {sub_k}: {sub_v}")
+            else:
+                print(f"  {k_test}: {v_test}")
+    except SystemExit as e:
+        print(f"Test run exited as expected due to config validation: code {e.code}")
+    except Exception as e_test:
+        print(f"Error during module test: {e_test}")
 
 
-    print("\nINFO: config_handler.py module test complete.")
+    print("\nINFO: config_handler.py module test block complete.")
 
     # Clean up dummy files if they were created by this test
-    if created_test_config and test_config_path.exists():
-        print(f"INFO: Removing dummy '{test_config_path}' created for testing.")
+    if created_dummy_config and test_config_path.exists():
+        print(f"INFO: Removing dummy '{test_config_path.name}' created for testing.")
         test_config_path.unlink()
-    if created_test_control and test_control_path.exists(): # Check again in case it was recreated
-        print(f"INFO: Removing dummy '{test_control_path}' created for testing.")
-        test_control_path.unlink()
+    # if created_dummy_control and test_control_path.exists(): # Control file not created in this example test
+    #     print(f"INFO: Removing dummy '{test_control_path.name}' created for testing.")
+    #     test_control_path.unlink()
+
+# end of modules/config_handler.py
