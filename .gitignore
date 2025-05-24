@@ -7,6 +7,10 @@ control_2025*.toml
 # or by explicitly un-ignoring it:
 # !control_example.toml
 
+# Rclone chunk logs (local)
+rclone_chunk_logs_py/
+rclone_logs/
+
 # Python
 # ------
 # Byte-compiled / optimized / DLL files
